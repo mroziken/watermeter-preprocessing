@@ -10,6 +10,7 @@ import json
 import dotenv
 from datetime import datetime
 import requests
+import io
 
 
 # Load environment variables from .env file
@@ -156,7 +157,15 @@ def process_image(file_path):
         image.save(output_path, format='JPEG')
         logging.info(f"Processed image saved to {output_path}")
         cropped_images = crop_and_resize(image,file_name)
-        classifications = [predict_image_classification(image,cropped_file_name) for image, cropped_file_name in cropped_images]
+
+        # Convert images to bytes-like objects
+        cropped_images_bytes = [(image, io.BytesIO()) for image, cropped_file_name in cropped_images]
+        for image, bytes_io in cropped_images_bytes:
+            image.save(bytes_io, format='JPEG')
+            bytes_io.seek(0)  # Reset the stream position to the beginning
+
+        classifications = [predict_image_classification(bytes_io, cropped_file_name) for _, (bytes_io, cropped_file_name) in zip(cropped_images, cropped_images_bytes)]
+
         classification_labels = [extract_label(prediction) for classification in classifications for prediction in classification]
 
 
