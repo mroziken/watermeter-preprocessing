@@ -1,7 +1,6 @@
 from flask import Flask
 import paho.mqtt.client as mqtt
 from PIL import Image, ImageOps, ImageEnhance, ImageDraw, ImageFilter
-import io
 import logging
 import numpy as np
 from scipy.ndimage import label, find_objects
@@ -9,6 +8,8 @@ from skimage.metrics import structural_similarity as ssim
 import os
 import json
 import dotenv
+from datetime import datetime
+import requests
 
 
 # Load environment variables from .env file
@@ -18,7 +19,61 @@ dotenv.load_dotenv()
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+CROP_PARAMS = [
+    (530, 670, 574, 725), (574, 670, 618, 725), (618, 670, 662, 725), (662, 670, 706, 725),
+    (706, 670, 750, 725), (750, 670, 794, 725), (794, 670, 838, 725), (838, 670, 882, 725)
+]
+
 app = Flask(__name__)
+
+def crop_and_resize(image,file_name):
+    logging.info('In crop_and_resize')
+    cropped_images = []
+    for crop_param in CROP_PARAMS:
+        cropped_image = image.crop(crop_param)
+        cropped_image = cropped_image.resize((640, int((640 / cropped_image.width) * cropped_image.height)), Image.Resampling.BICUBIC)
+        
+        # cropped_file_name should be file_name-0.jpeg, file_name-1.jpeg, etc.
+        cropped_file_name = f"{file_name}-{len(cropped_images)}"
+
+        cropped_images.append((cropped_image, cropped_file_name))
+
+    return cropped_images
+
+def predict_image_classification(image, file_name):
+    logging.info('In predit_image_classification')
+    
+    # image variable is a PIL Image object
+    # Send image to endpoint at http://192.168.1.22:5000/predict
+    # Use the requests library to send a POST request with the image
+    # The response will be a JSON object with the classification results
+    # Example response: {"file_name":"0033baa78cc45f7a-1.jpeg","prediction":0}
+    # Return the prediction from the response
+    
+    url = "http://192.168.1.22:5000/predict"
+    files = {'image': image}
+    response = requests.post(url, files=files)
+    prediction = response.json()["prediction"]
+
+    # Save the image to the /home/pi/watermeter/cropped directory as file_name-prediction.jpeg
+    cropped_path = f"/home/pi/watermeter/cropped/{file_name}-{prediction}.jpeg"
+    image.save(cropped_path)
+
+    return prediction
+
+
+def extract_label(prediction):
+    logging.info('In extract_label')
+    try:
+        display_names = prediction["displayNames"]
+        if display_names:
+            return display_names[0]
+    except KeyError as e:
+        print(f"KeyError: {e}")
+    except AttributeError as e:
+        print(f"AttributeError: {e}")
+    return 'Unknown'
+
 
 def maskSmallObjects(image):
     # Convert to grayscale
@@ -88,6 +143,7 @@ def process_image(file_path):
 
     try:
         image = Image.open(file_path)
+        file_name = os.path.basename(file_path)
 
         if os.path.exists(last_file_path):
             last_image = Image.open(last_file_path)
@@ -108,6 +164,27 @@ def process_image(file_path):
             output_path = os.path.join('/home/pi/watermeter/preprocessed', os.path.basename(file_path))
             image.save(output_path, format='JPEG')
             logging.info(f"Processed image saved to {output_path}")
+            cropped_images = crop_and_resize(image,file_name)
+            classifications = [predict_image_classification(image,cropped_file_name) for image, cropped_file_name in cropped_images]
+            classification_labels = [extract_label(prediction) for classification in classifications for prediction in classification]
+
+
+            meter_readings = ""
+            for i, label in enumerate(classification_labels):
+                meter_readings += label
+
+            # Prepare the message to be published
+            message = json.dumps({
+                'imageName': file_name,
+                'value': meter_readings,
+                'timestamp': datetime.now().isoformat(),
+                'version': 3.0
+            })
+
+            # Publish the message to the MQTT topic watermeter-out
+            client.publish("watermeter-out", message)
+            logging.info(f"Published message to watermeter-out: {message}")
+
 
         # Save the new image as the last processed image
         image.save(last_file_path, format='JPEG')

@@ -1,7 +1,8 @@
-flask==2.2.5
-paho-mqtt==1.6.1
-Pillow==9.3.0
-numpy==1.21.6
-scipy==1.7.3
-scikit-image==0.19.3
-python-dotenv==0.21.1
+flask
+paho-mqtt
+Pillow
+numpy
+scipy
+scikit-image
+python-dotenv
+requests
