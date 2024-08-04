@@ -143,55 +143,38 @@ def compare_images(img1, img2, threshold=0.99):
 
 def process_image(file_path):
     logging.info(f"Processing image: {file_path}")
-    last_file_path = '/home/pi/watermeter/preprocessed/last_file_name.jpeg'
 
     try:
         image = Image.open(file_path)
         file_name = os.path.basename(file_path)
 
-        if os.path.exists(last_file_path):
-            last_image = Image.open(last_file_path)
 
-            if compare_images(image, last_image):
-                logging.info('New image is significantly different from the last processed image, proceeding with transformation.')
-                image = transform_image(image)
+        logging.info('No last image found, proceeding with transformation.')
+        image = transform_image(image)
 
-                output_path = os.path.join('/home/pi/watermeter/preprocessed', os.path.basename(file_path))
-                image.save(output_path, format='JPEG')
-                logging.info(f"Processed image saved to {output_path}")
-            else:
-                logging.info('New image is similar to the last processed image, skipping transformation.')
-        else:
-            logging.info('No last image found, proceeding with transformation.')
-            image = transform_image(image)
-
-            output_path = os.path.join('/home/pi/watermeter/preprocessed', os.path.basename(file_path))
-            image.save(output_path, format='JPEG')
-            logging.info(f"Processed image saved to {output_path}")
-            cropped_images = crop_and_resize(image,file_name)
-            classifications = [predict_image_classification(image,cropped_file_name) for image, cropped_file_name in cropped_images]
-            classification_labels = [extract_label(prediction) for classification in classifications for prediction in classification]
+        output_path = os.path.join('/home/pi/watermeter/preprocessed', os.path.basename(file_path))
+        image.save(output_path, format='JPEG')
+        logging.info(f"Processed image saved to {output_path}")
+        cropped_images = crop_and_resize(image,file_name)
+        classifications = [predict_image_classification(image,cropped_file_name) for image, cropped_file_name in cropped_images]
+        classification_labels = [extract_label(prediction) for classification in classifications for prediction in classification]
 
 
-            meter_readings = ""
-            for i, label in enumerate(classification_labels):
-                meter_readings += label
+        meter_readings = ""
+        for i, label in enumerate(classification_labels):
+            meter_readings += label
 
-            # Prepare the message to be published
-            message = json.dumps({
-                'imageName': file_name,
-                'value': meter_readings,
-                'timestamp': datetime.now().isoformat(),
-                'version': 3.0
-            })
+        # Prepare the message to be published
+        message = json.dumps({
+            'imageName': file_name,
+            'value': meter_readings,
+            'timestamp': datetime.now().isoformat(),
+            'version': 3.0
+        })
 
-            # Publish the message to the MQTT topic watermeter-out
-            client.publish("watermeter-out", message)
-            logging.info(f"Published message to watermeter-out: {message}")
-
-
-        # Save the new image as the last processed image
-        image.save(last_file_path, format='JPEG')
+        # Publish the message to the MQTT topic watermeter-out
+        client.publish("watermeter-out", message)
+        logging.info(f"Published message to watermeter-out: {message}")
 
     except Exception as error:
         logging.error(f'Failed to process image: {error}')
