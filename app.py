@@ -76,6 +76,7 @@ def extract_label(prediction):
 
 
 def maskSmallObjects(image):
+    logging.info('In maskSmallObjects')
     # Convert to grayscale
     gray = image.convert('L')
     
@@ -107,6 +108,7 @@ def maskSmallObjects(image):
     return result
 
 def transform_image(image):
+    logging.info('In transform_image')
     # Image processing steps
     # Rotate the image by 7.5 degrees
     image = image.rotate(7.5, expand=False)
@@ -124,6 +126,7 @@ def transform_image(image):
     return enhancer.enhance(1.5)
 
 def compare_images(img1, img2, threshold=0.99):
+    logging
     # Convert images to grayscale
     img1_gray = img1.convert('L')
     img2_gray = img2.convert('L')
@@ -139,6 +142,7 @@ def compare_images(img1, img2, threshold=0.99):
     return similarity < threshold
 
 def process_image(file_path):
+    logging.info(f"Processing image: {file_path}")
     last_file_path = '/home/pi/watermeter/preprocessed/last_file_name.jpeg'
 
     try:
