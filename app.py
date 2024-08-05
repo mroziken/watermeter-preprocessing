@@ -33,6 +33,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 app = Flask(__name__)
 
+# Set to keep track of processed filenames
+processed_files = set()
+
 def crop_and_resize(file_name):
     logging.info('In crop_and_resize')
     base_file_name = os.path.basename(file_name)
@@ -221,29 +224,15 @@ def on_message(client, userdata, msg):
     try:
         data = json.loads(msg.payload.decode())
         file_path = data['filename']
-        if os.path.exists(file_path):
-            process_image(file_path)
+        
+        # Check if the file has already been processed
+        if file_path not in processed_files:
+            if os.path.exists(file_path):
+                process_image(file_path)
+                processed_files.add(file_path)  # Mark as processed
+            else:
+                logging.error(f"File not found: {file_path}")
         else:
-            logging.error(f"File not found: {file_path}")
+            logging.info(f"File already processed: {file_path}")
     except json.JSONDecodeError as e:
-        logging.error(f"Error decoding JSON: {e}")
-    except KeyError as e:
-        logging.error(f"Missing key in JSON data: {e}")
-
-# Read MQTT configuration from environment variables
-mqtt_broker_address = os.getenv("MQTT_BROKER_ADDRESS", "localhost")  # Default to localhost if not set
-mqtt_broker_port = int(os.getenv("MQTT_BROKER_PORT", 1883))         # Default to 1883 if not set
-
-# Start the MQTT client
-client = mqtt.Client()
-client.on_connect = on_connect
-client.on_message = on_message
-client.connect(mqtt_broker_address, mqtt_broker_port, 60)  # Replace with your MQTT broker address
-
-# Start a background thread for the MQTT loop
-client.loop_start()
-
-flask_app_port = os.getenv("FLASK_APP_PORT", 5000)
-print(f'flask_app_port: {flask_app_port}')
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5010)
+        logging.error(f"Error decoding JSON: {e
