@@ -36,6 +36,7 @@ app = Flask(__name__)
 
 def crop_and_resize(file_name):
     logging.info('In crop_and_resize')
+    base_file_name = os.path.basename(file_name)
     cropped_images = []
     image = Image.open(file_name)
     for crop_param in CROP_PARAMS:
@@ -43,7 +44,7 @@ def crop_and_resize(file_name):
         cropped_image = cropped_image.resize((640, int((640 / cropped_image.width) * cropped_image.height)), Image.Resampling.BICUBIC)
         
         # cropped_file_name should be file_name-0.jpeg, file_name-1.jpeg, etc.
-        cropped_file_name = f"{CROPPED}/{file_name}-{len(cropped_images)}.jpeg"
+        cropped_file_name = f"{CROPPED}/{base_file_name}-{len(cropped_images)}.jpeg"
         cropped_image.save(cropped_file_name)
 
         cropped_images.append(cropped_file_name)
