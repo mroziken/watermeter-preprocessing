@@ -33,6 +33,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 app = Flask(__name__)
 
+# Set to keep track of processed filenames
+processed_files = set()
+
 def crop_and_resize(file_name):
     logging.info('In crop_and_resize')
     base_file_name = os.path.basename(file_name)
