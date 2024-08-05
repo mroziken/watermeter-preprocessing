@@ -52,29 +52,23 @@ def crop_and_resize(file_name):
     return cropped_images
 
 def predict_image_classification(file_name):
-    logging.info('In predit_image_classification')
+    logging.info('In predict_image_classification')
     url = PREDICTION_API_ENDPOINT
 
     # extract the base file name from the filen_name
     base_file_name = os.path.basename(file_name)
-
-    # Load the image from the file_name
-    image = Image.open(file_name)
     
-    # image variable is a PIL Image object
-    # Send image to endpoint at url
-    # Use the requests library to send a POST request with the image
-    # The response will be a JSON object with the classification results
-    # Example response: {"file_name":"0033baa78cc45f7a-1.jpeg","prediction":0}
-    # Return the prediction from the response
+    # file_name is the path to the image file
+    image = Image.open(file_name)
 
-    files = {'image': image}
+    files = {'file': image}
     response = requests.post(url, files=files)
-    prediction = response.json()["prediction"]
+    prediction = response.json()
+    logging.info(f"Prediction: {prediction}")
 
-    # Save the image to the /home/pi/watermeter/cropped directory as file_name-prediction.jpeg
-    cropped_path = f"{CROPPED}/{base_file_name}-{prediction}.jpeg"
-    image.save(cropped_path)
+    # Save the prediction in a file
+    cropped_with_prediction = f"{CROPPED}/{base_file_name}-{prediction}.jpeg"
+    image.save(cropped_with_prediction)
 
     return prediction
 
