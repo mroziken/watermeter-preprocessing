@@ -51,23 +51,36 @@ def crop_and_resize(file_name):
 
     return cropped_images
 
+
 def predict_image_classification(file_name):
     logging.info('In predict_image_classification')
     url = PREDICTION_API_ENDPOINT
 
-    # extract the base file name from the filen_name
+    # Extract the base file name from the file_name
     base_file_name = os.path.basename(file_name)
     
-    # file_name is the path to the image file
+    # Open the image file
     image = Image.open(file_name)
 
-    files = {'file': image}
+    # Convert the image to a bytes-like object
+    image_bytes = BytesIO()
+    image.save(image_bytes, format='JPEG')
+    image_bytes.seek(0)
+
+    # Prepare the file for the POST request
+    files = {'file': (base_file_name, image_bytes, 'image/jpeg')}
     logging.info(f"Sending image to prediction API: {url}")
+    
+    # Send the POST request
     response = requests.post(url, files=files)
+    response.raise_for_status()  # Raise an error for bad responses
+
     prediction = response.json()
     logging.info(f"Prediction: {prediction}")
 
     # Save the prediction in a file
+    if not os.path.exists(CROPPED):
+        os.makedirs(CROPPED)
     cropped_with_prediction = f"{CROPPED}/{base_file_name}-{prediction}.jpeg"
     image.save(cropped_with_prediction)
 
