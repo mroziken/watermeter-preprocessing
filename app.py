@@ -62,6 +62,7 @@ def predict_image_classification(file_name):
     image = Image.open(file_name)
 
     files = {'file': image}
+    logging.info(f"Sending image to prediction API: {url}")
     response = requests.post(url, files=files)
     prediction = response.json()
     logging.info(f"Prediction: {prediction}")
