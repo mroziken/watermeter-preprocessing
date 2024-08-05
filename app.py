@@ -16,48 +16,63 @@ import io
 # Load environment variables from .env file
 dotenv.load_dotenv()
 
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
+PREDICTION_API_ENDPOINT = os.getenv("PREDICTION_API_ENDPOINT", "localhost:5000")
+WATERMETER_BASE_DIR = os.getenv("WATERMETER_BASE_DIR", "/home/pi/watermeter")
+IN = f'{WATERMETER_BASE_DIR}/in'
+PREPROCESSED = f'{WATERMETER_BASE_DIR}/preprocessed'
+CROPPED = f'{WATERMETER_BASE_DIR}/cropped'
+PREDICTIONS = f'{WATERMETER_BASE_DIR}/predictions'
+PROCESSED = f'{WATERMETER_BASE_DIR}/processed'
 CROP_PARAMS = [
     (530, 670, 574, 725), (574, 670, 618, 725), (618, 670, 662, 725), (662, 670, 706, 725),
     (706, 670, 750, 725), (750, 670, 794, 725), (794, 670, 838, 725), (838, 670, 882, 725)
 ]
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
 app = Flask(__name__)
 
-def crop_and_resize(image,file_name):
+def crop_and_resize(file_name):
     logging.info('In crop_and_resize')
     cropped_images = []
+    image = Image.open(file_name)
     for crop_param in CROP_PARAMS:
         cropped_image = image.crop(crop_param)
         cropped_image = cropped_image.resize((640, int((640 / cropped_image.width) * cropped_image.height)), Image.Resampling.BICUBIC)
         
         # cropped_file_name should be file_name-0.jpeg, file_name-1.jpeg, etc.
-        cropped_file_name = f"{file_name}-{len(cropped_images)}"
+        cropped_file_name = f"{CROPPED}/{file_name}-{len(cropped_images)}.jpeg"
+        cropped_image.save(cropped_file_name)
 
-        cropped_images.append((cropped_image, cropped_file_name))
+        cropped_images.append(cropped_file_name)
 
     return cropped_images
 
-def predict_image_classification(image, file_name):
+def predict_image_classification(file_name):
     logging.info('In predit_image_classification')
+    url = PREDICTION_API_ENDPOINT
+
+    # extract the base file name from the filen_name
+    base_file_name = os.path.basename(file_name)
+
+    # Load the image from the file_name
+    image = Image.open(file_name)
     
     # image variable is a PIL Image object
-    # Send image to endpoint at http://192.168.1.22:5000/predict
+    # Send image to endpoint at url
     # Use the requests library to send a POST request with the image
     # The response will be a JSON object with the classification results
     # Example response: {"file_name":"0033baa78cc45f7a-1.jpeg","prediction":0}
     # Return the prediction from the response
-    
-    url = "http://192.168.1.22:5000/predict"
+
     files = {'image': image}
     response = requests.post(url, files=files)
     prediction = response.json()["prediction"]
 
     # Save the image to the /home/pi/watermeter/cropped directory as file_name-prediction.jpeg
-    cropped_path = f"/home/pi/watermeter/cropped/{file_name}-{prediction}.jpeg"
+    cropped_path = f"{CROPPED}/{base_file_name}-{prediction}.jpeg"
     image.save(cropped_path)
 
     return prediction
@@ -153,24 +168,18 @@ def process_image(file_path):
         logging.info('No last image found, proceeding with transformation.')
         image = transform_image(image)
 
-        output_path = os.path.join('/home/pi/watermeter/preprocessed', os.path.basename(file_path))
-        image.save(output_path, format='JPEG')
-        logging.info(f"Processed image saved to {output_path}")
-        cropped_images = crop_and_resize(image,file_name)
+        preprocessed_file = os.path.join(PREPROCESSED, os.path.basename(file_path))
+        image.save(preprocessed_file, format='JPEG')
+        logging.info(f"Processed image saved to {preprocessed_file}")
+        cropped_images = crop_and_resize(preprocessed_file)
 
-        # Iterate through cropped_images, convert images to bytes-like objects
-        # Save the results in cropped_images_bytes list as tuples (bytes-like object, cropped_file_name string)
-        cropped_images_bytes = [(io.BytesIO(), cropped_file_name) for _, cropped_file_name in cropped_images]
-        final_cropped_images_bytes = []
-        for bytes_io, cropped_file_name in cropped_images_bytes:
-            cropped_image = next(cropped_image for cropped_image, name in cropped_images if name == cropped_file_name)
-            cropped_image.save(bytes_io, format='JPEG')
-            bytes_io.seek(0)
-            final_cropped_images_bytes.append((bytes_io, cropped_file_name))
+ 
 
-        # Iterate through final_cropped_images_bytes, call predict_image_classification for each image
+        # Iterate through cropped_images, call predict_image_classification for each image
         # Save the results in classifications list
-        classifications = [predict_image_classification(cropped_image, cropped_file_name) for cropped_image, cropped_file_name in final_cropped_images_bytes]
+
+
+        classifications = [predict_image_classification(cropped_image) for cropped_image in cropped_images]
 
         classification_labels = [extract_label(prediction) for classification in classifications for prediction in classification]
 
