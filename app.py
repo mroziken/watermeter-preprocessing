@@ -158,13 +158,19 @@ def process_image(file_path):
         logging.info(f"Processed image saved to {output_path}")
         cropped_images = crop_and_resize(image,file_name)
 
-        # Convert images to bytes-like objects
-        cropped_images_bytes = [(image, io.BytesIO()) for image, cropped_file_name in cropped_images]
-        for image, bytes_io in cropped_images_bytes:
-            image.save(bytes_io, format='JPEG')
-            bytes_io.seek(0)  # Reset the stream position to the beginning
+        # Iterate through cropped_images, convert images to bytes-like objects
+        # Save the results in cropped_images_bytes list as tuples (bytes-like object, cropped_file_name string)
+        cropped_images_bytes = [(io.BytesIO(), cropped_file_name) for _, cropped_file_name in cropped_images]
+        final_cropped_images_bytes = []
+        for bytes_io, cropped_file_name in cropped_images_bytes:
+            cropped_image = next(cropped_image for cropped_image, name in cropped_images if name == cropped_file_name)
+            cropped_image.save(bytes_io, format='JPEG')
+            bytes_io.seek(0)
+            final_cropped_images_bytes.append((bytes_io, cropped_file_name))
 
-        classifications = [predict_image_classification(bytes_io, cropped_file_name) for _, (bytes_io, cropped_file_name) in zip(cropped_images, cropped_images_bytes)]
+        # Iterate through final_cropped_images_bytes, call predict_image_classification for each image
+        # Save the results in classifications list
+        classifications = [predict_image_classification(cropped_image, cropped_file_name) for cropped_image, cropped_file_name in final_cropped_images_bytes]
 
         classification_labels = [extract_label(prediction) for classification in classifications for prediction in classification]
 
