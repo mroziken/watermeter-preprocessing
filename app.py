@@ -10,8 +10,7 @@ import json
 import dotenv
 from datetime import datetime
 import requests
-import io
-
+from io import BytesIO
 
 # Load environment variables from .env file
 dotenv.load_dotenv()
