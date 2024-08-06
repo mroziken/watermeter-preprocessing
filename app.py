@@ -217,7 +217,7 @@ def process_image(file_path):
 # MQTT callback functions
 def on_connect(client, userdata, flags, rc):
     logging.info(f"Connected with result code {rc}")
-    client.subscribe("watermeter-in")
+    client.subscribe("watermeter-in", qos=2)
 
 def on_message(client, userdata, msg):
     logging.info(f"Received message on {msg.topic}: {msg.payload.decode()}")
