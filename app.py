@@ -86,19 +86,6 @@ def predict_image_classification(file_name):
     return prediction
 
 
-def extract_label(prediction):
-    logging.info('In extract_label')
-    try:
-        display_names = prediction["displayNames"]
-        if display_names:
-            return display_names[0]
-    except KeyError as e:
-        print(f"KeyError: {e}")
-    except AttributeError as e:
-        print(f"AttributeError: {e}")
-    return 'Unknown'
-
-
 def maskSmallObjects(image):
     logging.info('In maskSmallObjects')
     # Convert to grayscale
@@ -189,10 +176,12 @@ def process_image(file_path):
 
         classifications = [predict_image_classification(cropped_image) for cropped_image in cropped_images]
 
-        classification_labels = [extract_label(prediction) for classification in classifications for prediction in classification]
-
-
         meter_readings = ""
+        
+        # Iterate throught classifications, 
+        # read value of prediction key and append  the value to meter_readings
+        classification_labels = [str(classification['prediction']) for classification in classifications]
+        
         for i, label in enumerate(classification_labels):
             meter_readings += label
 
