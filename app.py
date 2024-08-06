@@ -1,4 +1,3 @@
-from flask import Flask
 import paho.mqtt.client as mqtt
 from PIL import Image, ImageOps, ImageEnhance, ImageDraw, ImageFilter
 import logging
@@ -30,8 +29,6 @@ CROP_PARAMS = [
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
-app = Flask(__name__)
 
 # Set to keep track of processed filenames
 processed_files = set()
@@ -248,9 +245,6 @@ client.on_message = on_message
 client.connect(mqtt_broker_address, mqtt_broker_port, 60)  # Replace with your MQTT broker address
 
 # Start a background thread for the MQTT loop
-client.loop_start()
+client.loop_forever()
 
-flask_app_port = os.getenv("FLASK_APP_PORT", 5000)
-print(f'flask_app_port: {flask_app_port}')
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5010)
+
