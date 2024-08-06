@@ -101,7 +101,7 @@ def maskSmallObjects(image):
     np_image = np.array(thresholded)
     
     # Find contours using scipy.ndimage
-    labeled_array, num_features = label(np_image == 0)
+    labeled_array, _ = label(np_image == 0)
     objects = find_objects(labeled_array)
     
     # Create a mask for the numbers
@@ -182,7 +182,7 @@ def process_image(file_path):
         # read value of prediction key and append  the value to meter_readings
         classification_labels = [str(classification['prediction']) for classification in classifications]
         
-        for i, label in enumerate(classification_labels):
+        for _, label in enumerate(classification_labels):
             meter_readings += label
 
         # Prepare the message to be published
@@ -201,11 +201,11 @@ def process_image(file_path):
         logging.error(f'Failed to process image: {error}')
 
 # MQTT callback functions
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, _userdata, _flags, rc):
     logging.info(f"Connected with result code {rc}")
     client.subscribe("watermeter-in", qos=2)
 
-def on_message(client, userdata, msg):
+def on_message(_client, _userdata, msg):
     logging.info(f"Received message on {msg.topic}: {msg.payload.decode()}")
     try:
         data = json.loads(msg.payload.decode())
